@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Diels-Alder benzène + cyclopentadiène — PES & aromaticité (endo / exo)</title>
+<title>Diels-Alder benzène + cyclopentadiène — PES & aromaticité endo/exo (wB97XD/def2-SVP)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
@@ -73,8 +73,9 @@ footer { margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border)
 <body>
 
 <header>
-  <h1>Diels-Alder benzène + cyclopentadiène — PES &amp; aromaticité</h1>
+  <h1>Diels-Alder benzène + cyclopentadiène — PES &amp; aromaticité (wB97XD/def2-SVP)</h1>
   <p class="lede">
+    Niveau de théorie : <code>wB97XD/def2-SVP</code> (Gaussian 16).
     Trajectoires IRC complètes (forward + reverse) pour deux stéréochimies <strong>endo</strong> et <strong>exo</strong>,
     avec descripteurs AroX (HOMA, S-hom) sur <strong>6 motifs cycliques</strong> par point :
     <strong>Cyclopent (5)</strong>, <strong>Périph 5</strong>, <strong>Nouveau cycle (6)</strong>,
@@ -101,6 +102,7 @@ footer { margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border)
     <span class="label">Options</span>
     <button class="chip" id="btn-clip" aria-pressed="false" title="Tronque l'axe descripteur à [-2, 1.5] pour éviter que les valeurs extrêmes (HOMA Nouveau cycle au Reactif jusqu'à -325) ne squashent l'affichage">Clip HOMA [−2, 1.5]</button>
     <button class="btn-action" id="btn-default">Vue par défaut</button>
+    <button class="chip" id="btn-download" title="Télécharger le diagramme courant en PNG (titre + méthode + état actif)">⬇ Télécharger PNG</button>
   </div>
 </section>
 
@@ -119,9 +121,9 @@ footer { margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border)
 
 <footer>
   <p class="methods-note">
-    <strong>Methods.</strong> Intrinsic reaction coordinate (Gaussian 16) pour endo (44 points incluant extrapolés)
+    <strong>Methods.</strong> Intrinsic reaction coordinate au niveau <strong>wB97XD/def2-SVP</strong> (Gaussian 16) pour endo (44 points incluant extrapolés)
     et exo (33 points incluant extrapolés). Descripteurs AroX calculés par script Python sur géométries IRC sélectionnées
-    (<em>P1, P2, P3</em> côté réactif, <em>P4, P5, P6</em> côté produit) — mêmes fonctionnelle/base que l'IRC.
+    (<em>P1, P2, P3</em> côté réactif, <em>P4, P5, P6</em> côté produit, plus TS) — même niveau de théorie que l'IRC.
     Position des Points P<em>i</em> sur l'axe : <strong>équi-répartition</strong> entre Reactif/TS (P1–P3) et TS/Produit (P4–P6) ;
     énergie interpolée linéairement depuis la trajectoire IRC.
     HOMA: Krygowski R<sub>opt</sub>=1.3913 Å. Pour les motifs <em>Nouveau cycle (6)</em>, <em>Périph 5/9/10</em> près du Reactif
@@ -2594,6 +2596,13 @@ function buildLegend() {
   const root = document.getElementById('legend');
   root.innerHTML = '';
 
+  // Method (niveau de théorie)
+  const methSec = document.createElement('div');
+  methSec.className = 'legend-section';
+  methSec.innerHTML = `<span class="heading">Méthode</span>
+    <span class="legend-item"><span style="color:var(--text)">wB97XD/def2-SVP</span></span>`;
+  root.appendChild(methSec);
+
   // PES section
   const pesSec = document.createElement('div');
   pesSec.className = 'legend-section';
@@ -2768,6 +2777,55 @@ buildToolbar();
 document.getElementById('homa-sub-row').hidden = (state.descriptor !== 'HOMA');
 initChart();
 render();
+
+// ============================================================
+// 10) DOWNLOAD PNG (titre + méthode + état actif compositionnés)
+// ============================================================
+const EXPORT_TITLE  = "Diels-Alder benzène + cyclopentadiène — PES & aromaticité (endo / exo)";
+const EXPORT_METHOD = "wB97XD/def2-SVP (Gaussian 16)";
+const EXPORT_SLUG   = "da-benz-cyclopent";
+
+function buildExportStateLabel() {
+  const stereos = [...state.stereos].sort().map(s => STEREO_LABEL[s]).join(' + ');
+  const motifs  = [...state.motifs].map(m => MOTIF_LABEL[m]).join(', ');
+  const d = descMeta(state.descriptor);
+  const dlabel = d ? d.label : '—';
+  const decomp = (state.descriptor === 'HOMA' && state.homaComp.size > 0)
+                 ? ` [${[...state.homaComp].join(', ')}]` : '';
+  return `${stereos}  ·  ${motifs}  ·  Descripteur : ${dlabel}${decomp}`;
+}
+
+function downloadDiagram() {
+  const dataUrl = chart.toBase64Image('image/png', 1);
+  const img = new Image();
+  img.onload = () => {
+    const margin = 24;
+    const titleH = 80;
+    const out = document.createElement('canvas');
+    out.width  = img.naturalWidth  + margin * 2;
+    out.height = img.naturalHeight + margin * 2 + titleH;
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#1A1A1A';
+    ctx.font = 'bold 18px -apple-system, "Segoe UI", Arial, sans-serif';
+    ctx.fillText(EXPORT_TITLE, margin, margin);
+    ctx.font = '13px -apple-system, "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#6B6B6B';
+    ctx.fillText('Method : ' + EXPORT_METHOD, margin, margin + 26);
+    ctx.fillText('Config : ' + buildExportStateLabel(), margin, margin + 46);
+    ctx.drawImage(img, margin, margin + titleH);
+    const stereoTag = [...state.stereos].sort().join('-');
+    const slug = `${EXPORT_SLUG}_${stereoTag}_${state.descriptor || 'PES'}_${new Date().toISOString().slice(0, 10)}`;
+    const link = document.createElement('a');
+    link.download = slug + '.png';
+    link.href = out.toDataURL('image/png');
+    link.click();
+  };
+  img.src = dataUrl;
+}
+document.getElementById('btn-download').addEventListener('click', downloadDiagram);
 
 })();
 </script>
