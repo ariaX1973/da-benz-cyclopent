@@ -214,6 +214,7 @@ footer { margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border)
     </div>
     <div class="compare-row">
       <span class="label">Actions</span>
+      <button class="compare-chip" id="grid-pes" aria-pressed="true" title="Afficher la courbe PES en arrière-plan de chaque mini-graphe (axe Y droit en kcal/mol)">PES en arrière-plan</button>
       <button class="compare-chip" id="grid-preset-aroma" title="Sélection rapide HOMA / HOMA TOTAL / NICSiso / NICSzz local">Preset aromaticité</button>
       <button class="compare-chip" id="grid-clear">Tout désélectionner</button>
     </div>
@@ -1080,6 +1081,7 @@ const gridState = {
   motifs:  new Set([...state.motifs]),
   nicsBq:  new Set([...state.nicsBq]),
   descriptors: new Set(['HOMA', 'HOMA_TOTAL', 'NICS_iso']),
+  showPES: true,
 };
 const cmpPalette = ['#185FA5','#BA7517','#993556','#0F6E56','#534AB7','#993C1D','#D85A30',
                     '#5DCAA5','#AFA9EC','#F0997B','#85B7EB','#FAC775','#ED93B1','#7C5C2E'];
@@ -1230,7 +1232,8 @@ function cmpInit() {
              grid: { color: 'rgba(127,127,127,0.10)' } },
         y: { title: { display: true, text: 'Valeur (normalisée [0,1])' },
              grid: { color: 'rgba(127,127,127,0.12)' } },
-        yPES: { display: false, position: 'right', title: { display: false },
+        yPES: { display: false, position: 'right',
+                title: { display: true, text: 'ΔE (kcal/mol)', font: { size: 12 } },
                 grid: { drawOnChartArea: false } },
       },
       plugins: {
@@ -1450,6 +1453,11 @@ function gridBuildToolbar() {
 
   buildDescriptorRow(document.getElementById('grid-desc-row'), gridState, gridRender, 'gridDesc');
 
+  document.getElementById('grid-pes').addEventListener('click', (e) => {
+    gridState.showPES = !gridState.showPES;
+    e.currentTarget.setAttribute('aria-pressed', gridState.showPES);
+    gridRender();
+  });
   document.getElementById('grid-preset-aroma').addEventListener('click', () => {
     gridState.descriptors = new Set(['HOMA', 'HOMA_TOTAL', 'NICS_iso', 'NICS_zz_loc']);
     document.querySelectorAll('[data-grid-desc]').forEach(b => b.setAttribute('aria-pressed', gridState.descriptors.has(b.dataset.gridDesc)));
@@ -1490,6 +1498,20 @@ function gridRender() {
     root.appendChild(card);
 
     const datasets = [];
+    // PES en arrière-plan (1 courbe par stéréo active)
+    if (gridState.showPES) {
+      gridState.stereos.forEach(stereo => {
+        datasets.push({
+          label: `_pes_${stereo}`,
+          data: DATA[stereo].pes_irc.map(p => ({ x: p.x, y: p.y })),
+          borderColor: 'rgba(127,127,127,0.45)',
+          backgroundColor: 'rgba(127,127,127,0.08)',
+          borderWidth: 1.2, pointRadius: 0, pointHoverRadius: 0,
+          borderDash: (stereo === 'exo') ? [4, 3] : [],
+          tension: 0.25, yAxisID: 'yPES', order: 10,
+        });
+      });
+    }
     gridState.stereos.forEach(stereo => {
       const stereoCol = c(stereoColor[stereo]);
       const xs = POINT_ORDER.map(p => DATA[stereo].arox[p].x);
@@ -1502,7 +1524,7 @@ function gridRender() {
         borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
         pointStyle: (stereo === 'exo') ? 'triangle' : 'circle',
         borderDash: (stereo === 'exo') ? [5, 3] : [],
-        tension: 0.15, spanGaps: true,
+        tension: 0.15, spanGaps: true, yAxisID: 'y', order: 5,
       });
     });
 
@@ -1522,12 +1544,20 @@ function gridRender() {
           y: { ticks: { font: { size: 10 } },
                title: { display: true, text: d.label, font: { size: 10 }, padding: { top: 0, bottom: 2 } },
                grid: { color: 'rgba(127,127,127,0.10)' } },
+          yPES: { display: gridState.showPES, position: 'right',
+                  ticks: { font: { size: 9 }, color: 'rgba(127,127,127,0.7)' },
+                  title: { display: gridState.showPES, text: 'ΔE (kcal/mol)', font: { size: 9 }, color: 'rgba(127,127,127,0.7)' },
+                  grid: { drawOnChartArea: false } },
         },
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: {
             label: (ctx) => {
               const v = ctx.parsed.y;
+              if (ctx.dataset.label && ctx.dataset.label.startsWith('_pes_')) {
+                const stereo = ctx.dataset.label.slice(5);
+                return `PES ${STEREO_LABEL[stereo] || stereo} : ΔE = ${Number.isFinite(v) ? v.toFixed(2) : '—'} kcal/mol`;
+              }
               const pt = POINT_ORDER[ctx.dataIndex] || '';
               return `${ctx.dataset.label} @ ${pt} : ${Number.isFinite(v) ? v.toFixed(3) : '—'}`;
             },
