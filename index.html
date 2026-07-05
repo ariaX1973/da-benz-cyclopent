@@ -83,6 +83,23 @@
     }
   });
 })();
+window.ACS_CREDIT = "ARIA NOROOZI — M1 INTERNSHIP 2026 — LABORATOIRE DE CHIMIE THÉORIQUE (LCT)";
+window.withAcsCredit = function(canvas){
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const pad = Math.round(8 * dpr);
+  const cH = Math.round(14 * dpr) + pad * 2;
+  const out = document.createElement('canvas');
+  out.width = canvas.width; out.height = canvas.height + cH;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, out.width, out.height);
+  ctx.drawImage(canvas, 0, 0);
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#6B6B6B';
+  ctx.font = Math.round(12 * dpr) + 'px Helvetica, Arial, sans-serif';
+  const tw = ctx.measureText(window.ACS_CREDIT).width;
+  ctx.fillText(window.ACS_CREDIT, (out.width - tw) / 2, canvas.height + pad);
+  return out;
+};
 </script>
 <style>
 :root {
@@ -322,6 +339,7 @@ footer { margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border)
     <strong>NICS</strong> (Nucleus-Independent Chemical Shifts) calculés avec deux points fantômes Bq placés à 1.7 Å des plans moyens des deux cycles : <strong>Bq1 sur le cycle à 5</strong> (cyclopentadiène→cyclopentane) et <strong>Bq2 sur le cycle à 6</strong> (benzène→cyclohexadiène fusionné), au niveau <strong>ωB97X-D/def2SVP</strong> pour les deux stéréos.
     NICS<sub>iso</sub> = isotrope du tenseur de blindage ; NICS<sub>zz</sub> global = composante zz dans le repère absolu ; NICS<sub>zz</sub> local = projection sur la normale locale du cycle (descripteur le plus direct du courant d'aromaticité). Valeurs en ppm.
   </p>
+  <p style="text-align:center;font-size:0.75rem;letter-spacing:0.05em;color:var(--muted);padding:12px 0 4px;border-top:1px solid var(--border);margin-top:16px;font-family:Helvetica,Arial,sans-serif">ARIA NOROOZI — M1 INTERNSHIP 2026 — LABORATOIRE DE CHIMIE THÉORIQUE (LCT)</p>
 </footer>
 
 <script>
@@ -1140,7 +1158,7 @@ async function downloadDiagram() {
   const slug = `${EXPORT_SLUG}_${stereoTag}_${state.descriptor || 'PES'}_${new Date().toISOString().slice(0, 10)}`;
   const link = document.createElement('a');
   link.download = slug + '.png';
-  link.href = out.toDataURL('image/png');
+  link.href = withAcsCredit(out).toDataURL('image/png');
   link.click();
 }
 document.getElementById('btn-download').addEventListener('click', downloadDiagram);
@@ -1488,7 +1506,7 @@ async function cmpDownload() {
 
   const link = document.createElement('a');
   link.download = EXPORT_SLUG + '_compare_' + new Date().toISOString().slice(0, 10) + '.png';
-  link.href = out.toDataURL('image/png');
+  link.href = withAcsCredit(out).toDataURL('image/png');
   link.click();
 }
 
@@ -1760,7 +1778,7 @@ async function gridDownload() {
   });
   const link = document.createElement('a');
   link.download = EXPORT_SLUG + '_grid_' + new Date().toISOString().slice(0, 10) + '.png';
-  link.href = out.toDataURL('image/png');
+  link.href = withAcsCredit(out).toDataURL('image/png');
   link.click();
 }
 
